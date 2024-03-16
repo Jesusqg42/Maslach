@@ -1,0 +1,213 @@
+---
+title: "HackForGood - El síndrome de BurnOut (Primera limpieza)"
+author: "MAD09 - Maslash"
+date: "2024-03-15"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# PRIMERA LIMPIEZA DE LOS DATOS
+
+En esta primera limpieza lo que haremos será adaptar los resultados obtenidos a través de la encuesta para poder analizarlos más fácilmente.
+
+```{r}
+# Leemos el fichero de datos, que está en formato csv
+encuesta <- read.csv('Síndrome de Burnout.csv')
+head(encuesta)
+```
+
+Quitamos la marca temporal, pues no aporta ninguna información de utilidad al estudio.
+
+```{r}
+datos_encuesta <- encuesta[,-c(1)]
+head(datos_encuesta)
+```
+
+Al haber diseñado la encuensta de forma que todas las preguntas fuesen de respuesta obligatoria, no será necesario comprobar si hay NAs.
+
+El nombre de las columnas es demasiado largo, pues al ser una encuesta las variables son las preguntas que se han realizado, por lo que sería conveniente cambiar los nombres de la mayoria de estás variables a unos más cortos, para que su manipulación sea más cómoda.
+
+```{r}
+names(datos_encuesta) = c('Estudiante.42', 'Motivacion', 'Eleccion.estudios', 
+                          'Gustar.estudios', 'Aprovechar.tiempo', 'Organizacion', 
+                          'Comodo.compañeros', 'Horas.sueño', 'Dormir.suficiente', 
+                          'Comidias.diarias', 'Bebidas.energéticas', 
+                          'Actividad.fisica', 'Tiempo.estudios', 'Metodología', 
+                          'Acompañado', 'Ambiente.competitivo', 
+                          'Comodo.competicion', 'Autonomía', 'Presion.tareas', 
+                          'Burnout')
+head(datos_encuesta)
+```
+
+Convertimos todas las variables a categoricas.
+
+```{r}
+datos_encuesta2 <- as.data.frame(lapply(datos_encuesta, as.factor))
+summary(datos_encuesta2)
+```
+
+Vamos a cambiar las categorías de la variable 'Eleccion.estudios' a simplemente si o no, porque la otra parte era explicativa para que la gente lo entendiese mejor a la hora de contestar.
+
+```{r, warning=FALSE}
+library(dplyr)
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Eleccion.estudios = recode(Eleccion.estudios, "No, acabe de rebote" = "No", 
+                                    "Si, era lo que quería" = "Si"))
+```
+
+Las variables que requieren de una limpieza más profunda son aquellas cuya respuesta es abierta. Para ver cuántas categorías hay y si hay algunas que representen lo mismo pero recogido de diferente forma realizamos un conteo de las categorías que hay en dicha variable.
+
+Empezamos con la variable 'Horas.sueño'
+
+```{r}
+# Obtener conteos de los valores presentes en la variable Horas.sueño en el dataframe
+conteo_Horas.sueño <- table(datos_encuesta2$Horas.sueño)
+
+# Mostrar el resultado
+print(conteo_Horas.sueño)
+```
+
+Como se puede observar, hay muchas categorías que representan intervalos, horas que no son enteras, o incluso, la presencia de palabras como 'horas', todo esto no nos interesa a la hora de estudio.
+Para solucionar este problema seguiremos las siguientes pautas:
+- Solo dejaremos números enteros; nada de palabras, letras, espacios o símbolos como '-'
+- Los número decimales los truncaremos -> Por ejemplo, si tenemos 6.5 nos quedamos con el 6
+- Los intervalos se enfrentarán de dos formas:
+  - Calcularemos la media del intervalo, si es un número entero nos quedamos con él.
+  - Si no es un número entero; truncamos
+
+```{r}
+# Recodificar las categorías
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "10" = "10", "10 horas" = "10"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "4" = "4", "4 horas aprox." = "4", 
+                              "3-5" = "4"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "6" = "6", "6h" = "6", "6-7h" = "6", 
+                              "6 o 7" = "6", "6 ó 7" = "6", "6,5" = "6", 
+                              "6.33" = "6"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "7" = "7", "7 horas" = "7", 
+                              "7h" = "7", "6-8" = "7", "7-8" = "7",
+                              "7,5" = "7", "7,5h" = "7", "7.5" = "7"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "8" = "8", "8 " = "8", 
+                              "8 horas" = "8", "10-6" = "8"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "3h 26min" = "3"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Horas.sueño = recode(Horas.sueño, "4 - 7" = "5", "5-6" = "5"))
+
+# Volvemos a obtener conteos de los valores presentes en la variable para 
+# comprobar que los cambios se han realizado bien
+conteo1_Horas.sueño <- table(datos_encuesta2$Horas.sueño)
+
+# Mostrar el resultado
+print(conteo1_Horas.sueño)
+
+```
+
+Continuamos con la variable 'Tiempo.estudios'
+
+```{r}
+conteo_Tiempo.estudios <- table(datos_encuesta2$Tiempo.estudios)
+
+print(conteo_Tiempo.estudios)
+```
+
+La forma de limpieza de esta variables es exactamente igual que la anterior con el caso anterior excepto en un caso puntual. Cuando el tiempo de estudio es 0.x lo asociamos a la categoría del 1 en vez de a la de 0, pues no es lo mismo estudiar menos de una hora que no estudiar absolutamente nada.
+
+```{r}
+# Recodificar las categorías
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "8" = "8", "8 horas" = "8",
+                                  "Contando el tiempo en telefonica 8" = "8", 
+                                  "Unas 8 seis días a la semana" = "8",  
+                                  "6h-10h" = "8", "6-10" = "8"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "0.2" = "1", "0.5" = "1", 
+                                  "1-2" = "1", "1 o 2" = "1",
+                                  "1 hora o más dependiendo de la semana" = "1"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "4-5" = "4", "4 horas" = "4"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "2horas" = "2",
+                                  "2-3 (sin contar el tiempo que estamos en clase)" = "2"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "5 - 6 horas" = "5"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "6-7" = "6", "6-7h" = "6", 
+                                  "6h" = "6", "4 - 8" = "6"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "7h" = "7"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "9-10" = "9"))
+
+datos_encuesta2 <- datos_encuesta2 %>%
+  mutate(Tiempo.estudios = recode(Tiempo.estudios, "Entre 8 y 12" = "10"))
+```
+
+```{r}
+conteo1_Tiempo.estudios <- table(datos_encuesta2$Tiempo.estudios)
+
+print(conteo1_Tiempo.estudios)
+```
+
+Gracias a este conteo podemos observar que hay 4 variables cuyos datos de esta variable no se ajustan a los parámetros, pues la pregunta es cuántas horas estudia una persona diariamente y rangos como 20, 25, 40 o No lo sé, no sirven para darle generalidad.
+
+Antes de eliminar estas observaciones, observemos cuántas tenemos en total.
+
+```{r}
+# Usando nrow()
+num_observaciones <- nrow(datos_encuesta2)
+print(num_observaciones)
+```
+
+Eliminamos las observaciones que hemos detectado como 'defectuosas' y volvemos a obtener el número total de observaciones después de este cambio para comprobar si efectivamente se han eliminado 4 y solo 4 filas.
+
+```{r}
+datos_encuesta3 <- datos_encuesta2[!(datos_encuesta2$Tiempo.estudios == "25 h" | 
+                                       datos_encuesta2$Tiempo.estudios == "20 horas" | 
+                                       datos_encuesta2$Tiempo.estudios == "40" | 
+                                       datos_encuesta2$Tiempo.estudios == "No lo sé"), ]
+
+
+num_observaciones2 <- nrow(datos_encuesta3)
+print(num_observaciones2)
+```
+
+Ya vemos que efectivamente se han eliminado solo 4 filas, veamos si justo son las que queriamos volviendo a hacer un conteo de los datos.
+
+```{r}
+# Obtener conteos de los valores presentes en la variable Dias.VM en el data frame
+conteo2_Tiempo.estudios <- table(datos_encuesta3$Tiempo.estudios)
+
+# Mostrar el resultado
+print(conteo2_Tiempo.estudios)
+```
+
+Descargamos en forma de excel la base de datos ya limpiada para poder realizar el análisis de datos y clusterizar.
+
+```{r}
+# Suponiendo que 'data' es tu DataFrame modificado
+library(writexl)
+
+write_xlsx(datos_encuesta3, "archivo_modificado0.xlsx")
+```

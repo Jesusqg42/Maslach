@@ -1,0 +1,41 @@
+---
+title: "HackForGood - El síndrome de BurnOut (Segunda limpieza)"
+author: "MAD09 - Maslash"
+date: "2024-03-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SEGUNDA LIMPIEZA DE DATOS
+
+En esta segunda limpieza de datos lo único que hay que hacer es, a la base de datos limpiada anteriormente, añadimos la variable 'Cluster' para poder ver cómo afecta ser de un cluster u otro en los datos visualmente. Pues esta 
+
+```{r}
+library(readxl)
+
+datos_encuesta <- read_excel("archivo_modificado0.xlsx")
+encuesta_clusters <- read_excel("Clusters.xlsx")
+head(encuesta_clusters)
+```
+
+Añadimos la variable de a qué cluster pertenece cada individuo, para esto, primero la seleccionamos del un excel y se la incorporamos al que habíamos modificado anteriormente.
+
+```{r}
+# Extraemos la variable
+cluster <- encuesta_clusters$cluster_label
+
+# Unimos la base de datos anterior con la variable 'Cluster'
+datos_encuesta4 <- cbind(datos_encuesta, cluster)
+head(datos_encuesta4)
+```
+
+Lo descargamos como un excel. Este dataframe lo usaremos para realizar todos los gráficos del PowerBI
+
+```{r}
+library(writexl)
+
+write_xlsx(datos_encuesta4, "archivo_modificado.xlsx")
+```
